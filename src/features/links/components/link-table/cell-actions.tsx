@@ -17,6 +17,7 @@ import { AlertModal } from '@/components/modal/alert-modal'
 import { Icons } from '@/components/icons'
 import { deleteLinkMutation } from '../../api/mutations'
 import type { Link } from '../../api/types'
+import { QRCodeDialog } from '../qr-code-dialog'
 
 interface LinkCellActionsProps {
   link: Link
@@ -25,6 +26,7 @@ interface LinkCellActionsProps {
 
 export function LinkCellActions({ link, onEdit }: LinkCellActionsProps) {
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
   const router = useRouter()
 
   const deleteMutation = useMutation({
@@ -46,6 +48,9 @@ export function LinkCellActions({ link, onEdit }: LinkCellActionsProps) {
         onConfirm={() => deleteMutation.mutate(link.id)}
         loading={deleteMutation.isPending}
       />
+
+      <QRCodeDialog link={link} open={qrOpen} onOpenChange={setQrOpen} />
+
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant='ghost' className='h-8 w-8 p-0'>
@@ -53,7 +58,7 @@ export function LinkCellActions({ link, onEdit }: LinkCellActionsProps) {
             <Icons.ellipsis className='h-4 w-4' />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align='end' className='w-44'>
+        <DropdownMenuContent align='end' className='w-48'>
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => {
@@ -61,16 +66,21 @@ export function LinkCellActions({ link, onEdit }: LinkCellActionsProps) {
               toast.success('Copied!')
             }}
           >
-            <Icons.share className='mr-2 h-4 w-4' /> Copy link
+            <Icons.share className='mr-2 h-4 w-4' />
+            Copy link
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/links/${link.id}`)}
-          >
-            <Icons.trendingUp className='mr-2 h-4 w-4' /> View analytics
+          <DropdownMenuItem onClick={() => setQrOpen(true)}>
+            <Icons.qrCode className='mr-2 h-4 w-4' />
+            QR code
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/links/${link.id}`)}>
+            <Icons.trendingUp className='mr-2 h-4 w-4' />
+            View analytics
           </DropdownMenuItem>
           {onEdit && (
             <DropdownMenuItem onClick={() => onEdit(link)}>
-              <Icons.edit className='mr-2 h-4 w-4' /> Edit
+              <Icons.edit className='mr-2 h-4 w-4' />
+              Edit
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
@@ -78,7 +88,8 @@ export function LinkCellActions({ link, onEdit }: LinkCellActionsProps) {
             onClick={() => setDeleteOpen(true)}
             className='text-destructive focus:text-destructive'
           >
-            <Icons.trash className='mr-2 h-4 w-4' /> Delete
+            <Icons.trash className='mr-2 h-4 w-4' />
+            Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

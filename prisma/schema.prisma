@@ -7,16 +7,35 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────
-// WORKSPACE (tenant = Clerk Organization)
-// Identity owned by Clerk — we mirror id + name
+// USER — mirrors Supabase auth.users
 // ─────────────────────────────────────────────
-model Workspace {
-  id        String   @id // = clerk_org_id
-  name      String
-  slug      String   @unique
+model User {
+  id        String   @id // = supabase auth.users.id (uuid)
+  email     String   @unique
+  name      String?
+  avatarUrl String?  @map("avatar_url")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  workspaces WorkspaceMember[]
+  links      Link[]
+  auditLogs  AuditLog[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// WORKSPACE — tenant, owned by a user
+// ─────────────────────────────────────────────
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  ownerId   String   @map("owner_id") // references User.id
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members       WorkspaceMember[]
   links         Link[]
   campaigns     Campaign[]
   domains       Domain[]
@@ -24,7 +43,26 @@ model Workspace {
   usageCounters UsageCounter[]
   auditLogs     AuditLog[]
 
+  @@index([ownerId])
   @@map("workspaces")
+}
+
+// ─────────────────────────────────────────────
+// WORKSPACE MEMBER — user ↔ workspace join
+// ─────────────────────────────────────────────
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  role        String   @default("member") // owner | admin | member
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
 }
 
 // ─────────────────────────────────────────────
@@ -61,7 +99,7 @@ model Subscription {
   planId               String   @map("plan_id")
   stripeCustomerId     String?  @map("stripe_customer_id")
   stripeSubscriptionId String?  @unique @map("stripe_subscription_id")
-  status               String   @default("active") // active | past_due | canceled | trialing
+  status               String   @default("active")
   currentPeriodStart   DateTime @map("current_period_start")
   currentPeriodEnd     DateTime @map("current_period_end")
   createdAt            DateTime @default(now()) @map("created_at")
@@ -77,13 +115,12 @@ model Subscription {
 
 // ─────────────────────────────────────────────
 // DOMAIN
-// Mirrored from Dub — we store for UI + workspace scoping
 // ─────────────────────────────────────────────
 model Domain {
   id          String   @id @default(cuid())
   workspaceId String   @map("workspace_id")
   hostname    String   @unique
-  dubDomainId String?  @map("dub_domain_id") // Dub's domain identifier
+  dubDomainId String?  @map("dub_domain_id")
   isVerified  Boolean  @default(false) @map("is_verified")
   isPrimary   Boolean  @default(false) @map("is_primary")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -97,7 +134,6 @@ model Domain {
 
 // ─────────────────────────────────────────────
 // CAMPAIGN
-// Maps to Dub "tags" — we own the entity, tag by campaign name
 // ─────────────────────────────────────────────
 model Campaign {
   id          String    @id @default(cuid())
@@ -105,7 +141,7 @@ model Campaign {
   name        String
   color       String    @default("#6366f1")
   description String?
-  dubTagId    String?   @map("dub_tag_id") // Dub tag id
+  dubTagId    String?   @map("dub_tag_id")
   createdAt   DateTime  @default(now()) @map("created_at")
   archivedAt  DateTime? @map("archived_at")
 
@@ -118,29 +154,29 @@ model Campaign {
 
 // ─────────────────────────────────────────────
 // LINK
-// Source of truth for workspace scoping + campaign/domain assignment.
-// dubLinkId is the Dub link id — used for analytics + redirect.
 // ─────────────────────────────────────────────
 model Link {
-  id              String    @id @default(cuid())
-  workspaceId     String    @map("workspace_id")
-  domainId        String?   @map("domain_id")
-  campaignId      String?   @map("campaign_id")
-  createdByUserId String    @map("created_by_user_id") // clerk_user_id
-  destinationUrl  String    @map("destination_url")
-  slug            String
-  dubLinkId       String?   @unique @map("dub_link_id") // Dub's link id
-  shortUrl        String?   @map("short_url") // e.g. https://dub.sh/abc or custom domain
-  isActive        Boolean   @default(true) @map("is_active")
-  title           String?
-  expiresAt       DateTime? @map("expires_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(cuid())
+  workspaceId    String    @map("workspace_id")
+  domainId       String?   @map("domain_id")
+  campaignId     String?   @map("campaign_id")
+  createdByUserId String   @map("created_by_user_id") // references User.id
+  destinationUrl String    @map("destination_url")
+  slug           String
+  dubLinkId      String?   @unique @map("dub_link_id")
+  shortUrl       String?   @map("short_url")
+  isActive       Boolean   @default(true) @map("is_active")
+  title          String?
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   domain    Domain?   @relation(fields: [domainId], references: [id], onDelete: SetNull)
   campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  creator   User      @relation(fields: [createdByUserId], references: [id])
 
+  @@unique([slug, domainId])
   @@index([workspaceId, createdAt(sort: Desc)])
   @@index([workspaceId, campaignId])
   @@index([dubLinkId])
@@ -148,16 +184,15 @@ model Link {
 }
 
 // ─────────────────────────────────────────────
-// USAGE COUNTER (fast billing checks)
-// Avoids expensive API calls for limit enforcement
+// USAGE COUNTER
 // ─────────────────────────────────────────────
 model UsageCounter {
-  id            String   @id @default(cuid())
-  workspaceId   String   @map("workspace_id")
-  period        String // "2026-04" (YYYY-MM)
-  linksCreated  Int      @default(0) @map("links_created")
-  domainsAdded  Int      @default(0) @map("domains_added")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  workspaceId  String   @map("workspace_id")
+  period       String // "2026-04"
+  linksCreated Int      @default(0) @map("links_created")
+  domainsAdded Int      @default(0) @map("domains_added")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
@@ -167,19 +202,39 @@ model UsageCounter {
 }
 
 // ─────────────────────────────────────────────
+// DAILY CLICK SUMMARY
+// ─────────────────────────────────────────────
+model DailyClickSummary {
+  id             String   @id @default(cuid())
+  linkId         String   @map("link_id")
+  workspaceId    String   @map("workspace_id")
+  date           DateTime @db.Date
+  country        String?
+  deviceType     String?  @map("device_type")
+  referrerDomain String?  @map("referrer_domain")
+  clickCount     Int      @default(0) @map("click_count")
+
+  @@unique([linkId, date, country, deviceType, referrerDomain])
+  @@index([workspaceId, date(sort: Desc)])
+  @@index([linkId, date(sort: Desc)])
+  @@map("daily_click_summaries")
+}
+
+// ─────────────────────────────────────────────
 // AUDIT LOG
 // ─────────────────────────────────────────────
 model AuditLog {
-  id               String   @id @default(cuid())
-  workspaceId      String   @map("workspace_id")
-  actorClerkUserId String   @map("actor_clerk_user_id")
-  action           String // link.created | domain.verified | plan.upgraded
-  resourceType     String?  @map("resource_type")
-  resourceId       String?  @map("resource_id")
-  metadata         Json?
-  createdAt        DateTime @default(now()) @map("created_at")
+  id           String   @id @default(cuid())
+  workspaceId  String   @map("workspace_id")
+  actorUserId  String   @map("actor_user_id")
+  action       String
+  resourceType String?  @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User      @relation(fields: [actorUserId], references: [id])
 
   @@index([workspaceId, createdAt(sort: Desc)])
   @@map("audit_logs")

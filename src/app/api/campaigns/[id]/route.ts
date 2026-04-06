@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { getApiContext } from '@/lib/api-auth'
 import { NextRequest } from 'next/server'
 import { getCampaignById, updateCampaign, deleteCampaign } from '@/features/campaigns/api/service'
 import { createCampaignSchema } from '@/features/campaigns/schemas/campaign'
@@ -6,19 +6,19 @@ import { createCampaignSchema } from '@/features/campaigns/schemas/campaign'
 type Params = { params: Promise<{ id: string }> }
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  const { orgId } = await auth()
-  if (!orgId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const ctx = await getApiContext()
+  if (!ctx) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const campaign = await getCampaignById(id, orgId)
+  const campaign = await getCampaignById(id, ctx.workspaceId)
   if (!campaign) return Response.json({ error: 'Not found' }, { status: 404 })
 
   return Response.json({ campaign })
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const { orgId } = await auth()
-  if (!orgId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const ctx = await getApiContext()
+  if (!ctx) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
   const body = await req.json()
@@ -27,15 +27,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return Response.json({ error: 'Validation failed', issues: parsed.error.issues }, { status: 422 })
   }
 
-  const campaign = await updateCampaign(id, parsed.data, orgId)
+  const campaign = await updateCampaign(id, parsed.data, ctx.workspaceId)
   return Response.json({ campaign })
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const { orgId } = await auth()
-  if (!orgId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const ctx = await getApiContext()
+  if (!ctx) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  await deleteCampaign(id, orgId)
+  await deleteCampaign(id, ctx.workspaceId)
   return Response.json({ ok: true })
 }
