@@ -48,6 +48,7 @@ import {
   IconLayoutDashboard,
   IconLayoutKanban,
   IconLayoutSidebar,
+  IconLink,
   IconLoader2,
   IconLock,
   IconLogin,
@@ -63,6 +64,7 @@ import {
   IconPizza,
   IconPlus,
   IconProps,
+  IconQrcode,
   IconRosetteDiscountCheck,
   IconSearch,
   IconSelector,
@@ -74,6 +76,7 @@ import {
   IconStack2,
   IconStar,
   IconSun,
+  IconTag,
   IconTrash,
   IconTrendingDown,
   IconTrendingUp,
@@ -87,6 +90,7 @@ import {
   IconUsers,
   IconVideo,
   IconCrown,
+  IconWorld,
   IconX
 } from '@tabler/icons-react';
 
@@ -212,5 +216,13 @@ export const Icons = {
   slash: IconSlash,
   calendar: IconCalendar,
   galleryVerticalEnd: IconStack2,
-  moreHorizontal: IconDots
+  moreHorizontal: IconDots,
+
+  // Links / Campaigns / Analytics / Domains
+  link: IconLink,
+  links: IconLink,
+  campaign: IconTag,
+  campaigns: IconTag,
+  domains: IconWorld,
+  qrCode: IconQrcode
 };

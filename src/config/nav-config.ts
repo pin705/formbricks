@@ -35,6 +35,43 @@ import { NavGroup } from '@/types';
  */
 export const navGroups: NavGroup[] = [
   {
+    label: 'Links',
+    items: [
+      {
+        title: 'Links',
+        url: '/dashboard/links',
+        icon: 'links',
+        isActive: false,
+        shortcut: ['l', 'l'],
+        items: []
+      },
+      {
+        title: 'Campaigns',
+        url: '/dashboard/campaigns',
+        icon: 'campaigns',
+        isActive: false,
+        shortcut: ['c', 'c'],
+        items: []
+      },
+      {
+        title: 'Analytics',
+        url: '/dashboard/analytics',
+        icon: 'trendingUp',
+        isActive: false,
+        shortcut: ['a', 'a'],
+        items: []
+      },
+      {
+        title: 'Domains',
+        url: '/dashboard/domains',
+        icon: 'domains',
+        isActive: false,
+        items: [],
+        access: { requireOrg: true }
+      }
+    ]
+  },
+  {
     label: 'Overview',
     items: [
       {
