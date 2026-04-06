@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
 
   if (isAuth && user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard/links'
+    url.pathname = '/dashboard/overview'
     return NextResponse.redirect(url)
   }
 

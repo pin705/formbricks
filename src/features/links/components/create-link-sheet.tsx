@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { createLinkMutation, updateLinkMutation } from '../api/mutations'
 import { campaignsQueryOptions } from '@/features/campaigns/api/queries'
+import { domainsQueryOptions } from '@/features/domains/api/queries'
 import { createLinkSchema, type CreateLinkFormValues } from '../schemas/link'
 import type { Link } from '../api/types'
 
@@ -28,11 +29,18 @@ export function CreateLinkSheet({ open, onOpenChange, editLink }: CreateLinkShee
   const isEdit = !!editLink
 
   const { data: campaignsData } = useQuery(campaignsQueryOptions())
+  const { data: domainsData } = useQuery(domainsQueryOptions())
 
   const campaignOptions = (campaignsData?.campaigns ?? []).map((c) => ({
     label: c.name,
     value: c.id
   }))
+
+  const verifiedDomains = (domainsData?.domains ?? []).filter((d) => d.isVerified)
+  const domainOptions = [
+    { label: 'Default (dub.link)', value: '' },
+    ...verifiedDomains.map((d) => ({ label: d.hostname, value: d.id }))
+  ]
 
   const createMutation = useMutation({
     ...createLinkMutation,
@@ -64,6 +72,7 @@ export function CreateLinkSheet({ open, onOpenChange, editLink }: CreateLinkShee
       destinationUrl: editLink?.destinationUrl ?? '',
       slug: editLink?.slug ?? '',
       campaignId: editLink?.campaignId ?? '',
+      domainId: editLink?.domainId ?? '',
       title: editLink?.title ?? '',
       expiresAt: editLink?.expiresAt
         ? new Date(editLink.expiresAt).toISOString().split('T')[0]
@@ -77,6 +86,7 @@ export function CreateLinkSheet({ open, onOpenChange, editLink }: CreateLinkShee
         destinationUrl: value.destinationUrl,
         ...(value.slug ? { slug: value.slug } : {}),
         ...(value.campaignId ? { campaignId: value.campaignId } : {}),
+        ...(value.domainId ? { domainId: value.domainId } : {}),
         ...(value.title ? { title: value.title } : {}),
         ...(value.expiresAt ? { expiresAt: new Date(value.expiresAt).toISOString() } : {})
       }
@@ -116,19 +126,37 @@ export function CreateLinkSheet({ open, onOpenChange, editLink }: CreateLinkShee
                 }}
               />
 
-              <FormTextField
-                name='slug'
-                label='Custom Slug'
-                placeholder='my-campaign-link (optional)'
-                description='Leave blank to auto-generate'
-                validators={{
-                  onBlur: z
-                    .string()
-                    .regex(/^[a-z0-9-_]*$/, 'Only lowercase letters, numbers, hyphens, underscores')
-                    .optional()
-                    .or(z.literal(''))
-                }}
-              />
+              {/* Domain + Slug row */}
+              <div className='space-y-1.5'>
+                <Label>Short URL</Label>
+                <div className='flex gap-2'>
+                  {domainOptions.length > 1 && (
+                    <div className='w-44 shrink-0'>
+                      <FormSelectField
+                        name='domainId'
+                        label=''
+                        options={domainOptions}
+                        placeholder='Domain'
+                      />
+                    </div>
+                  )}
+                  <div className='flex-1'>
+                    <FormTextField
+                      name='slug'
+                      label=''
+                      placeholder='my-link (optional)'
+                      validators={{
+                        onBlur: z
+                          .string()
+                          .regex(/^[a-z0-9-_]*$/, 'Only lowercase letters, numbers, hyphens, underscores')
+                          .optional()
+                          .or(z.literal(''))
+                      }}
+                    />
+                  </div>
+                </div>
+                <p className='text-xs text-muted-foreground'>Leave slug blank to auto-generate</p>
+              </div>
 
               {campaignOptions.length > 0 && (
                 <FormSelectField

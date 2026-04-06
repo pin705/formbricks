@@ -5,6 +5,14 @@ export const navGroups: NavGroup[] = [
     label: '',
     items: [
       {
+        title: 'Overview',
+        url: '/dashboard/overview',
+        icon: 'dashboard',
+        isActive: false,
+        shortcut: ['o', 'o'],
+        items: []
+      },
+      {
         title: 'Links',
         url: '/dashboard/links',
         icon: 'links',
